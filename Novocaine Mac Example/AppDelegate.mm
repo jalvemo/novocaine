@@ -44,10 +44,22 @@ void playNote(int note) {
     o2.freq = o1.freq + 1;
     o3.freq = freqFromNote(note - 12);
     
+    
+    float attack = 20000.0; // min 1 = instant
+    __block float attackProgress = 0;
+    
+    float adsr = 0;
+    adsr = 0;
+    
     [audioManager setOutputBlock:^(float *data, UInt32 numFrames, UInt32 numChannels)  {
         float samplingRate = audioManager.samplingRate;
         for (int i=0; i < numFrames; ++i) {
-            float theta = (sawOsc(o1.phase) + sawOsc(o2.phase) + sawOsc(o3.phase)) / 3;
+            
+            if (attackProgress < 1){
+                attackProgress = attackProgress + 1/attack;
+            }
+            
+            float theta =attackProgress * (sawOsc(o1.phase) + sawOsc(o2.phase) + sawOsc(o3.phase)) / 3;
             
             for (int iChannel = 0; iChannel < numChannels; ++iChannel)
                 data[i * numChannels + iChannel] = theta;
@@ -61,7 +73,7 @@ void playNote(int note) {
             if (o3.phase > 1.0) o3.phase = -1;
         }
     }];
-}
+}                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           
 
 void silence() {
     Novocaine *audioManager = [Novocaine audioManager];
