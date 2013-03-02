@@ -29,10 +29,9 @@
 
 @interface AppDelegate : NSObject <NSApplicationDelegate>
 {
-    RingBuffer *ringBuffer;
-    Novocaine *audioManager;
-    AudioFileReader *fileReader;
-    AudioFileWriter *fileWriter;
+    @private
+//    NSMutableArray *currentlyPlayingNotesInOrder;
+//    NSMutableSet *currentlyPlayingNotes;
 }
 
 @property (assign) IBOutlet NSWindow *window;

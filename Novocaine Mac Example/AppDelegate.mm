@@ -1,27 +1,3 @@
-// Copyright (c) 2012 Alex Wiltschko
-// 
-// Permission is hereby granted, free of charge, to any person
-// obtaining a copy of this software and associated documentation
-// files (the "Software"), to deal in the Software without
-// restriction, including without limitation the rights to use,
-// copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the
-// Software is furnished to do so, subject to the following
-// conditions:
-// 
-// The above copyright notice and this permission notice shall be
-// included in all copies or substantial portions of the Software.
-// 
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
-// OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-// NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
-// HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-// WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
-// OTHER DEALINGS IN THE SOFTWARE.
-
-
 #import "AppDelegate.h"
 
 @implementation AppDelegate
@@ -33,93 +9,139 @@
     [super dealloc];
 }
 
+float sineOsc(float phase){
+    return sin(phase * M_PI * 2);
+}
+
+float squareOsc(float phase){
+    return signbit(phase);
+}
+
+float sawOsc(float phase){
+    return phase;
+}
+
+struct Osc {
+    float freq;
+    float phase = 0;
+};
+
+static inline float freqFromNote(int note) {
+    return 440.0 * pow(2,((double)note-69.0)/12.0);
+}
+
+Osc o1, o2, o3;
+NSMutableArray *currentlyPlayingNotesInOrder = [NSMutableArray array];
+NSMutableSet *currentlyPlayingNotes = [NSMutableSet set];
+
+//    currentlyPlayingNotes = [[NSMutableSet init] alloc];
+//    currentlyPlayingNotesInOrder = [[NSMutableArray init] alloc];
+
+
+void playNote(int note) {
+    Novocaine *audioManager = [Novocaine audioManager];
+    o1.freq = freqFromNote(note);
+    o2.freq = o1.freq + 1;
+    o3.freq = freqFromNote(note - 12);
+    
+    [audioManager setOutputBlock:^(float *data, UInt32 numFrames, UInt32 numChannels)  {
+        float samplingRate = audioManager.samplingRate;
+        for (int i=0; i < numFrames; ++i) {
+            float theta = (sawOsc(o1.phase) + sawOsc(o2.phase) + sawOsc(o3.phase)) / 3;
+            
+            for (int iChannel = 0; iChannel < numChannels; ++iChannel)
+                data[i * numChannels + iChannel] = theta;
+            
+            o1.phase += 1.0 / (samplingRate / o1.freq);
+            o2.phase += 1.0 / (samplingRate / o2.freq);
+            o3.phase += 1.0 / (samplingRate / o3.freq);
+            
+            if (o1.phase > 1.0) o1.phase = -1;
+            if (o2.phase > 1.0) o2.phase = -1;
+            if (o3.phase > 1.0) o3.phase = -1;
+        }
+    }];
+}
+
+void silence() {
+    Novocaine *audioManager = [Novocaine audioManager];
+    [audioManager setOutputBlock:^(float *data, UInt32 numFrames, UInt32 numChannels)  {
+        for (int i=0; i < numFrames; ++i)
+            for (int iChannel = 0; iChannel < numChannels; ++iChannel)
+                data[i*numChannels + iChannel] = 0;
+    }];
+}
+
+void midiInputCallback (const MIDIPacketList *packetList, void *procRef, void *srcRef)
+{
+    const MIDIPacket *packet = packetList->packet;
+    int message = packet->data[0];
+    int note = packet->data[1];
+    int velocity = packet->data[2];
+    
+    NSNumber *noteNumber = [NSNumber numberWithInt:note];
+    //NSLog(@"%3i %3i %3i", message, note, velocity);
+    
+    if (message >= 128 && message <= 143) { // note off
+        [currentlyPlayingNotes removeObject:noteNumber];
+        
+        // ta bort senaste noterna om de inte spelas längre
+        while ([currentlyPlayingNotesInOrder count] > 0 && ![currentlyPlayingNotes containsObject:[currentlyPlayingNotesInOrder lastObject]]) {
+                [currentlyPlayingNotesInOrder removeLastObject];
+        }
+        
+        if ([currentlyPlayingNotesInOrder count] > 0) {
+            playNote([[currentlyPlayingNotesInOrder lastObject] integerValue]);
+        } else {
+            silence();
+        }
+    }
+    if (message >= 144 && message <= 159) { // note n
+        [currentlyPlayingNotesInOrder addObject:noteNumber];
+        [currentlyPlayingNotes addObject:noteNumber];
+        playNote(note);
+    }
+}
+
 - (void)applicationDidFinishLaunching:(NSNotification *)aNotification
 {
+    //set up midi input
+    MIDIClientRef midiClient;
+    MIDIEndpointRef src;
     
-
-    audioManager = [Novocaine audioManager];
-//    ringBuffer = new RingBuffer(32768, 2); 
+    OSStatus result;
     
-
-// A simple delay that's hard to express without ring buffers
-// ========================================
-//
-//    [audioManager setInputBlock:^(float *data, UInt32 numFrames, UInt32 numChannels) {
-//        ringBuffer->AddNewInterleavedFloatData(data, numFrames, numChannels);
-//    }];
-//    
-//    int echoDelay = 11025;
-//    float *holdingBuffer = (float *)calloc(16384, sizeof(float));
-//    [audioManager setOutputBlock:^(float *outData, UInt32 numFrames, UInt32 numChannels) {
-//        
-//        // Grab the play-through audio
-//        ringBuffer->FetchInterleavedData(outData, numFrames, numChannels);
-//        float volume = 0.8;
-//        vDSP_vsmul(outData, 1, &volume, outData, 1, numFrames*numChannels);
-//        
-//        
-//        // Seek back, and grab some delayed audio
-//        ringBuffer->SeekReadHeadPosition(-echoDelay-numFrames);
-//        ringBuffer->FetchInterleavedData(holdingBuffer, numFrames, numChannels);
-//        ringBuffer->SeekReadHeadPosition(echoDelay);
-//        
-//        volume = 0.5;
-//        vDSP_vsmul(holdingBuffer, 1, &volume, holdingBuffer, 1, numFrames*numChannels);
-//        vDSP_vadd(holdingBuffer, 1, outData, 1, outData, 1, numFrames*numChannels);
-//    }];
-//    
+    result = MIDIClientCreate(CFSTR("MIDI client"), NULL, NULL, &midiClient);
+    if (result != noErr) {
+        NSLog(@"Errore : %s - %s",
+              GetMacOSStatusErrorString(result),
+              GetMacOSStatusCommentString(result));
+        return;
+    }
     
-    // AUDIO FILE READING COOL!
-    // ========================================    
-    NSURL *inputFileURL = [[NSBundle mainBundle] URLForResource:@"TLC" withExtension:@"mp3"];        
+    //note the use of "self" to send the reference to this document object
+    result = MIDIDestinationCreate(midiClient, CFSTR("Porta virtuale"), midiInputCallback, self, &src);
+    if (result != noErr ) {
+        NSLog(@"Errore : %s - %s",
+              GetMacOSStatusErrorString(result),
+              GetMacOSStatusCommentString(result));
+        return;
+    }
     
-    fileReader = [[AudioFileReader alloc] 
-                  initWithAudioFileURL:inputFileURL 
-                  samplingRate:audioManager.samplingRate
-                  numChannels:audioManager.numOutputChannels];
-
-    fileReader.currentTime = 5;    
-    [fileReader play];
+    MIDIPortRef inputPort;
+    //and again here
+    result = MIDIInputPortCreate(midiClient, CFSTR("Input"), midiInputCallback, self, &inputPort);
     
+    ItemCount numOfDevices = MIDIGetNumberOfDevices();
     
-    __block int counter = 0;
-    [audioManager setOutputBlock:^(float *data, UInt32 numFrames, UInt32 numChannels)
-     {
-         [fileReader retrieveFreshAudio:data numFrames:numFrames numChannels:numChannels];
-         counter++;
-         if (counter % 80 == 0)
-             NSLog(@"Time: %f", fileReader.currentTime);
-         
-     }];
-    
-
-
-    
-    // AUDIO FILE WRITING YEAH!
-    // ========================================    
-//    NSArray *pathComponents = [NSArray arrayWithObjects:
-//                               [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) lastObject], 
-//                               @"My Recording.m4a", 
-//                               nil];
-//    NSURL *outputFileURL = [NSURL fileURLWithPathComponents:pathComponents];
-//
-//    fileWriter = [[AudioFileWriter alloc] 
-//                  initWithAudioFileURL:outputFileURL 
-//                  samplingRate:audioManager.samplingRate 
-//                  numChannels:audioManager.numInputChannels];
-//    
-//    
-//    __block int counter = 0;
-//    audioManager.inputBlock = ^(float *data, UInt32 numFrames, UInt32 numChannels) {
-//        [fileWriter writeNewAudio:data numFrames:numFrames numChannels:numChannels];
-//        counter += 1;
-//        if (counter > 10 * audioManager.samplingRate / numChannels) { // 10 seconds of recording
-//            audioManager.inputBlock = nil;
-//            [fileWriter release];
-//        }
-//    };
-
-    
+    for (int i = 0; i < numOfDevices; i++) {
+        MIDIDeviceRef midiDevice = MIDIGetDevice(i);
+        NSDictionary *midiProperties;
+        
+        MIDIObjectGetProperties(midiDevice, (CFPropertyListRef *)&midiProperties, YES);
+        MIDIEndpointRef src = MIDIGetSource(i);
+        MIDIPortConnectSource(inputPort, src, NULL);
+    }
 }
 
 @end

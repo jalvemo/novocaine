@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		48D1636E16E265F400A42E9B /* CoreMIDI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 48D1636D16E265F400A42E9B /* CoreMIDI.framework */; };
 		FA0B92E9154ACB100079834E /* AudioFileReader.mm in Sources */ = {isa = PBXBuildFile; fileRef = FA0B92E8154ACB100079834E /* AudioFileReader.mm */; };
 		FA0B92EA154ACB100079834E /* AudioFileReader.mm in Sources */ = {isa = PBXBuildFile; fileRef = FA0B92E8154ACB100079834E /* AudioFileReader.mm */; };
 		FA2015DD154B02CC00F8D3AC /* TLC.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = FA2015DC154B02CC00F8D3AC /* TLC.mp3 */; };
@@ -42,6 +43,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		48D1636D16E265F400A42E9B /* CoreMIDI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreMIDI.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.8.sdk/System/Library/Frameworks/CoreMIDI.framework; sourceTree = DEVELOPER_DIR; };
 		FA0B92E7154ACB100079834E /* AudioFileReader.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AudioFileReader.h; sourceTree = "<group>"; };
 		FA0B92E8154ACB100079834E /* AudioFileReader.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = AudioFileReader.mm; sourceTree = "<group>"; };
 		FA2015DC154B02CC00F8D3AC /* TLC.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = TLC.mp3; sourceTree = "<group>"; };
@@ -93,6 +95,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				48D1636E16E265F400A42E9B /* CoreMIDI.framework in Frameworks */,
 				FA5526A5152A640E003D9601 /* Accelerate.framework in Frameworks */,
 				FA5526A6152A640E003D9601 /* AudioToolbox.framework in Frameworks */,
 				FA5526A7152A640E003D9601 /* AudioUnit.framework in Frameworks */,
@@ -120,6 +123,7 @@
 		FA552628152A63A4003D9601 = {
 			isa = PBXGroup;
 			children = (
+				48D1636D16E265F400A42E9B /* CoreMIDI.framework */,
 				FA552694152A63F6003D9601 /* Novocaine */,
 				FA55267F152A63B6003D9601 /* Novocaine Mac Example */,
 				FA5526D3152A6452003D9601 /* Novocaine iOS Example */,
